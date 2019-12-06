@@ -3,7 +3,7 @@ import numpy as np
 ### import the data into an array of ints (because the entries will be indices)
 data = np.genfromtxt('/Users/dannykun1/Documents/repositories/github/adventofcode19/data/day5.csv', delimiter=',', dtype=int)
 
-### Part 1
+### Parts 1&2 together
 
 
 # Function to determine length of instruction
@@ -15,6 +15,8 @@ data = np.genfromtxt('/Users/dannykun1/Documents/repositories/github/adventofcod
 # Read in instruction
 
 
+# More Ops for part 2. Need to increase the get_op options and 
+# Add Ops functions
 def get_op(opcode):
     ## Checks the last digit of the opcode to determine the type of operation
     # Returns the type of operation and number of params in respective instruction
@@ -22,71 +24,100 @@ def get_op(opcode):
     if opcode == 99:
         return (opcode, 0)
     code = opcode%10
-    if code not in [1,2,3,4]: raise Exception("Opcode {} not recognized".format(code))
-    if code < 3:
+    if code not in [1,2,3,4,5,6,7,8]: raise Exception("Opcode {} not recognized".format(code))
+    if code in [1,2,7,8]:
         return (code, 4)
-    else:
+    elif code in [3,4]:
         return (code, 2)
+    else:
+        return (code, 3)
 
+## Set instruction values according to parameters (for Opcode 1 and 2) 
+def set_values(instruction):
+    opcode = instruction[0]
+    params = int(opcode/100)
+    vals = instruction[1:]
+    if params not in [0,1,10,11]: raise Exception("Unexpected params enpointered: {}".format(params))
+    if params == 0:
+        vals[0] = data[instruction[1]]
+        vals[1] = data[instruction[2]]
+    elif params == 1:
+        vals[1] = data[instruction[2]]
+    elif params == 10:
+        vals[0] = data[instruction[1]]
+    return (vals)
+
+## Opcode 3: Input
+def write(data, val, address):
+    data[address] = val
+
+## Opcode 4: Output
 def read(data, instr):
     if instr[0] == 104:
         return (instr[1])
     else: return (data[instr[1]])
 
-def write(data, val, address):
-    data[address] = val
-
-def set_values(instruction):
-    opcode = instruction[0]
-    params = int(opcode/100)
-    vals = instruction[1:4]
-    if params == 0:
-        return (vals)
+# Opcode 5: jump-if-true
+def jump_if_true(instr, pointer, stps):
+    if instr[1] == 0:
+        return (pointer + stps)
     else:
-        if params%10 == 0:
-            vals[0] = data[instruction[1]]
-        params = int(params/10)
-        if params%10 == 0:
-            vals[1] = data[instruction[2]]
-        return (vals)
+        return (instr[2])
+
+# Opcode 6: jump-if-false
+def jump_if_false(instr, pointer, stps):
+    if instr[1] != 0:
+        return (pointer + stps)
+    else:
+        return (instr[2])
+
+# Opcode 7: less-than
+def less_than(instr):
+    if instr[1]< instr[2]:
+        return(1)
+    else: 
+        return (0)
+
+# Opcode 8: equals
+def equals(instr):
+    if instr[1] == instr[2]:
+        return(1)
+    else: 
+        return (0)
 
 ## main program
 
 def run_comp(data, ID=1):
-    counter = 0
-    opcode, steps = get_op(data[counter])
+    pointer = 0
+    opcode, steps = get_op(data[pointer])
 
     while (opcode!=99):
-        print ("Counter =", counter)
-        instr = data[counter:(counter+steps)]
+        print ("pointer =", pointer)
+        instr = data[pointer:(pointer+steps)]
+        if opcode not in [3, 4]:
+            vals = set_values(instr)
 
         if opcode == 1:
-            vals = set_values(instr)
             data[vals[2]] = vals[0] + vals[1]
         elif opcode == 2:
-            vals = set_values(instr)
             data[vals[2]] = vals[0] * vals[1]
         elif opcode == 3:
             write(data, ID, instr[1])
-        else:
+        elif opcode == 4:
             print (read(data, instr))
+        elif opcode == 5:
+            pointer = jump_if_true(instr, pointer, steps)
+        elif opcode == 6:
+            pointer = jump_if_false(instr, pointer, steps)
+        elif opcode == 7:
+            data[instr[3]] = less_than(instr)
+        else:
+            data[instr[3]] = equals(instr)
         
-        counter += steps
-        opcode, steps = get_op(data[counter])
+        if opcode not in [5,6]:
+            pointer += steps
+        opcode, steps = get_op(data[pointer])
 
-run_comp(data)
+run_comp(data, ID=5)
 
 
-### Part 2:
-## Find 'inputs' i.e. data[1] and data[2] values,
-## such that the exit value, data[0], equals 19690720
-# cycle = 0
-# for i in np.arange(100):
-#     for j in np.arange(100):
-#         print ("Cycle ", cycle, " of 10000")
-#         inputs = np.array([i,j])
-#         new_data = run_comp(data, inputs)
-#         if new_data[0] == 19690720: break
-#         cycle += 1
-
-# solution = 100 * new_data[1] + new_data[2]
